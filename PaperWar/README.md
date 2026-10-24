@@ -37,3 +37,15 @@ Heartbeat detects disconnects. Wi-Fi = TCP + UDP broadcast discovery; Bluetooth 
 ## Status
 Engine/geometry compiled and sanity-tested off-device. The Android UI/network code was written without an
 Android SDK available, so first build may need small fixes - send me any compiler errors.
+
+## Online play (Firebase)
+Adds "Create/Join game – Online" with a 5-character room code. Game logic is unchanged: `Online.kt` provides a
+`FirebaseLink` that implements the same `Link` interface as the Wi-Fi/Bluetooth `Connection`, so the host-authoritative
+`Engine`/`Session` work exactly as before.
+
+Setup (one time):
+1. Firebase console -> create project -> add Android app with package `com.paperwar`.
+2. Download `google-services.json` into `PaperWar/app/`.
+3. Build -> Authentication -> Sign-in method -> enable **Anonymous**.
+4. Build -> Realtime Database -> Create database -> Rules -> paste `database.rules.json` -> Publish.
+Without `google-services.json` the app still builds; the Online buttons just show a "not set up" message.

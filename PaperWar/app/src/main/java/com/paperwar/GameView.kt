@@ -41,6 +41,11 @@ class GameView(ctx: Context) : View(ctx) {
     private var pendY = 0f
     private val timeout = Runnable { if (dragging) finishDrag(true) }
 
+    // Easter egg: tap your own treasure chest 8 times
+    private var eggTaps = 0
+    private var eggLastTap = 0L
+    private var eggUntil = 0L
+
     private fun me() = Session.myIndex
     private fun colorOf(p: Int) = if (p == 0) blue else red
     private fun tint(c: Int, a: Int) = Color.argb(a, Color.red(c), Color.green(c), Color.blue(c))
@@ -77,7 +82,46 @@ class GameView(ctx: Context) : View(ctx) {
         val st = Session.state
         drawPaper(c)
         if (st.phase == PHASE_DEPLOY) drawDeploy(c) else drawBattle(c, st)
+        drawEgg(c)
         if (st.reviveState == RV_ACTIVE || dragging) postInvalidateOnAnimation()
+    }
+
+    private fun drawEgg(c: Canvas) {
+        if (SystemClock.elapsedRealtime() >= eggUntil) return
+        val w = C.W * sc
+        val cx = ox + w / 2f
+        val cy = oy + C.H * sc / 2f
+        fill.color = Color.argb(225, 43, 43, 43)
+        c.drawRoundRect(RectF(cx - w * 0.44f, cy - 90f * sc, cx + w * 0.44f, cy + 90f * sc), 28f * sc, 28f * sc, fill)
+        label.color = Color.WHITE
+        label.textSize = 46f * sc
+        c.drawText("Nothing inside the chest!", cx, cy - 8f * sc, label)
+        label.textSize = 34f * sc
+        c.drawText("You're defending an empty barrel.", cx, cy + 50f * sc, label)
+    }
+
+    /** Counts taps on the player's own treasure; 8 quick taps shows a message for 3 seconds. */
+    private fun eggTap(st: GameState, x: Float, y: Float) {
+        val m = me()
+        val tx: Float
+        val ty: Float
+        if (st.phase == PHASE_DEPLOY) {
+            if (Session.placed < 1) return
+            tx = Session.lx[0]; ty = Session.ly[0]
+        } else {
+            if (st.soldiers.isEmpty()) return
+            tx = st.tx[m]; ty = st.ty[m]
+        }
+        if (Geo.dist(x, y, tx, ty) > C.TREASURE_R + 20f) return
+        val now = SystemClock.elapsedRealtime()
+        if (now - eggLastTap > 2000L) eggTaps = 0
+        eggLastTap = now
+        if (++eggTaps >= 8) {
+            eggTaps = 0
+            eggUntil = now + 3000L
+            invalidate()
+            postInvalidateDelayed(3050L)
+        }
     }
 
     private fun lw() = max(3f, 6f * sc)
@@ -283,6 +327,7 @@ class GameView(ctx: Context) : View(ctx) {
         val st = Session.state
         val x = fromPx(e.x)
         val y = fromPy(e.y)
+        if (e.actionMasked == MotionEvent.ACTION_DOWN) eggTap(st, x, y)
         when (st.phase) {
             PHASE_DEPLOY -> deployTouch(e.actionMasked, x, y)
             PHASE_BATTLE -> battleTouch(e.actionMasked, x, y, st)

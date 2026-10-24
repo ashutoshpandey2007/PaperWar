@@ -22,19 +22,28 @@ import java.net.SocketAddress
 import java.util.UUID
 import java.util.concurrent.Executors
 
+/** Anything that can carry the game's JSON messages between the two phones (TCP, Bluetooth, Firebase...). */
+interface Link {
+    var onMessage: (JSONObject) -> Unit
+    var onClosed: (String) -> Unit
+    fun start()
+    fun send(o: JSONObject)
+    fun close()
+}
+
 /** Line-delimited JSON over any stream (TCP or Bluetooth RFCOMM), with heartbeat. */
 class Connection(
     private val input: InputStream,
     private val output: OutputStream,
     private val closer: () -> Unit
-) {
+) : Link {
     @Volatile private var closed = false
     @Volatile private var lastRx = System.currentTimeMillis()
-    var onMessage: (JSONObject) -> Unit = {}
-    var onClosed: (String) -> Unit = {}
+    override var onMessage: (JSONObject) -> Unit = {}
+    override var onClosed: (String) -> Unit = {}
     private val writer = Executors.newSingleThreadExecutor()
 
-    fun start() {
+    override fun start() {
         Thread({ readLoop() }, "pw-read").apply { isDaemon = true }.start()
         Thread({ beat() }, "pw-beat").apply { isDaemon = true }.start()
     }
@@ -66,7 +75,7 @@ class Connection(
         }
     }
 
-    fun send(o: JSONObject) {
+    override fun send(o: JSONObject) {
         if (closed) return
         val bytes = (o.toString() + "\n").toByteArray(Charsets.UTF_8)
         try {
@@ -97,7 +106,7 @@ class Connection(
         }
     }
 
-    fun close() {
+    override fun close() {
         val first: Boolean
         synchronized(this) {
             first = !closed

@@ -28,7 +28,7 @@ object Session {
     var isHost = false
     var myIndex = 0
     var connected = false
-    private var conn: Connection? = null
+    private var conn: Link? = null
     private var engine: Engine? = null
     private var clientState = GameState()
     val state: GameState get() = engine?.s ?: clientState
@@ -46,6 +46,7 @@ object Session {
     private var wifiHost: WifiHost? = null
     private var btHost: BtHost? = null
     private var discovery: WifiDiscovery? = null
+    private var onlineHost: OnlineHost? = null
 
     fun now(): Long = SystemClock.elapsedRealtime()
 
@@ -61,6 +62,7 @@ object Session {
         wifiHost?.stop(); wifiHost = null
         btHost?.stop(); btHost = null
         discovery?.stop(); discovery = null
+        onlineHost?.stop(); onlineHost = null
         conn?.let { it.onClosed = {}; it.close() }
         conn = null
         connected = false
@@ -103,6 +105,27 @@ object Session {
         BtClient.connect(adapter, device, { c -> main.post { attach(c) } }, { e -> main.post { ui?.onStatus(e) } })
     }
 
+    /** Online (Firebase) host: [onCode] is called with the room code to show to the friend. */
+    fun hostOnline(onCode: (String) -> Unit) {
+        leave()
+        isHost = true; myIndex = 0; engine = Engine()
+        val h = OnlineHost(
+            { code -> main.post { onCode(code) } },
+            { l -> main.post { attach(l) } },
+            { e -> main.post { ui?.onStatus(e) } }
+        )
+        onlineHost = h
+        h.start()
+    }
+
+    fun joinOnline(code: String) {
+        if (code.isBlank()) { ui?.onStatus("Enter the room code first"); return }
+        leave()
+        isHost = false; myIndex = 1
+        ui?.onStatus("Joining room ${code.uppercase()} …")
+        OnlineGuest.join(code, { l -> main.post { attach(l) } }, { e -> main.post { ui?.onStatus(e) } })
+    }
+
     fun startDiscovery(onFound: (String) -> Unit) {
         discovery?.stop()
         val d = WifiDiscovery { ip -> main.post { onFound(ip) } }
@@ -115,9 +138,10 @@ object Session {
         discovery = null
     }
 
-    private fun attach(c: Connection) {
+    private fun attach(c: Link) {
         wifiHost?.stop(); wifiHost = null
         btHost?.stop(); btHost = null
+        onlineHost?.stop(); onlineHost = null
         discovery?.stop(); discovery = null
         conn = c
         connected = true

@@ -106,7 +106,9 @@ class MainActivity : Activity(), Session.Ui {
         val p = page()
         p.addView(title("PAPER WAR"))
         p.addView(credit("— By Ashutosh Pandey —"))
-        p.addView(body("Two players · no internet needed"))
+        p.addView(body("Two players · online, Wi-Fi or Bluetooth"))
+        p.addView(button("Create game – Online") { showHostOnline() })
+        p.addView(button("Join game – Online") { showJoinOnline() })
         p.addView(button("Create game – Wi-Fi") { showHostWifi() })
         p.addView(button("Join game – Wi-Fi") { showJoinWifi() })
         p.addView(button("Create game – Bluetooth") { hostBt() })
@@ -114,6 +116,51 @@ class MainActivity : Activity(), Session.Ui {
         p.addView(button("Game rules") { showRules() })
         p.addView(button("Exit") { finishAffinity() })
         setScreen(p, menu = true)
+    }
+
+    private fun showHostOnline() {
+        if (!Online.available(this)) {
+            toast("Online play isn't set up in this build (google-services.json missing)")
+            return
+        }
+        val p = page()
+        p.addView(title("Create game"))
+        p.addView(body("Send this room code to your friend. They choose “Join game – Online” and type it in."))
+        val codeView = TextView(this).apply {
+            text = "· · · · ·"; textSize = 44f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(ink); gravity = Gravity.CENTER; letterSpacing = 0.15f
+            setPadding(0, dp(12), 0, dp(12))
+        }
+        p.addView(codeView)
+        statusView = body("Creating room…")
+        p.addView(statusView)
+        p.addView(button("Cancel") { showMenu() })
+        setScreen(p)
+        Session.hostOnline { code ->
+            codeView.text = code
+            statusView?.text = "Waiting for opponent…"
+        }
+    }
+
+    private fun showJoinOnline() {
+        if (!Online.available(this)) {
+            toast("Online play isn't set up in this build (google-services.json missing)")
+            return
+        }
+        Session.leave()
+        val p = page()
+        p.addView(title("Join game"))
+        p.addView(body("Type the 5-character room code your friend sees on their screen."))
+        val input = EditText(this).apply {
+            hint = "ROOM CODE"; setSingleLine(); textSize = 28f; gravity = Gravity.CENTER
+            filters = arrayOf(android.text.InputFilter.AllCaps(), android.text.InputFilter.LengthFilter(5))
+        }
+        p.addView(input)
+        p.addView(button("Join") { Session.joinOnline(input.text.toString().trim()) })
+        statusView = body("")
+        p.addView(statusView)
+        p.addView(button("Back") { showMenu() })
+        setScreen(p)
     }
 
     private fun showHostWifi() {
