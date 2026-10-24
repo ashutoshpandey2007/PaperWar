@@ -1,38 +1,57 @@
-android {
-    namespace = "com.paperwork"
-    compileSdk = 34
+name: Build APK
 
-    defaultConfig {
-        applicationId = "com.paperwork"
-        minSdk = 24
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: PaperWar
+    steps:
+      - uses: actions/checkout@v4
 
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-    }
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+      - name: Build debug APK
+        run: gradle assembleDebug --stacktrace
 
-    lint {
-        checkReleaseBuilds = false
-        abortOnError = false
-    }
-}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PaperWar-apk
+          path: PaperWar/app/build/outputs/apk/debug/*.apk
+
+      # Signed release build: only runs if the keystore secret exists
+      - name: Decode keystore
+        id: ks
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > app/release-keystore.jks
+            echo "have=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build signed release APK
+        if: steps.ks.outputs.have == 'true'
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: gradle assembleRelease --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        if: steps.ks.outputs.have == 'true'
+        with:
+          name: PaperWar-release-apk
+          path: PaperWar/app/build/outputs/apk/release/*.apk
