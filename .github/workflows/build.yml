@@ -5,6 +5,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,7 +27,9 @@ jobs:
           gradle-version: 8.9
 
       - name: Build debug APK
-        run: gradle assembleDebug --stacktrace
+        run: |
+          gradle assembleDebug --stacktrace
+          mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/PaperWar-debug.apk
 
       - uses: actions/upload-artifact@v4
         with:
@@ -48,10 +53,23 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: gradle assembleRelease --stacktrace
+        run: |
+          gradle assembleRelease --stacktrace
+          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/PaperWar.apk
 
       - uses: actions/upload-artifact@v4
         if: steps.ks.outputs.have == 'true'
         with:
           name: PaperWar-release-apk
           path: PaperWar/app/build/outputs/apk/release/*.apk
+
+      - name: Publish GitHub Release
+        if: steps.ks.outputs.have == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v1.0.${{ github.run_number }}" \
+            app/build/outputs/apk/release/PaperWar.apk \
+            --repo "${{ github.repository }}" \
+            --title "Paper War v1.0.${{ github.run_number }}" \
+            --generate-notes
