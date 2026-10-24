@@ -19,7 +19,8 @@ jobs:
         run: |
           cd PaperWar
           gradle assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/PaperWar.apk
       - uses: actions/upload-artifact@v4
         with:
           name: PaperWar-apk
-          path: PaperWar/app/build/outputs/apk/debug/app-debug.apk
+          path: PaperWar/app/build/outputs/apk/debug/PaperWar.apk
