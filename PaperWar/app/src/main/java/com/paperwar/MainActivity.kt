@@ -76,6 +76,13 @@ class MainActivity : Activity(), Session.Ui {
         setPadding(0, dp(8), 0, dp(8))
     }
 
+    private fun credit(t: String) = TextView(this).apply {
+        text = t; textSize = 15f
+        typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC)
+        setTextColor(Color.parseColor("#C62828")); letterSpacing = 0.08f
+        gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(16))
+    }
+
     private fun button(t: String, onClick: () -> Unit) = Button(this).apply {
         text = t; isAllCaps = false; textSize = 17f
         setOnClickListener { onClick() }
@@ -98,6 +105,7 @@ class MainActivity : Activity(), Session.Ui {
         Session.leave()
         val p = page()
         p.addView(title("PAPER WAR"))
+        p.addView(credit("— By Ashutosh Pandey —"))
         p.addView(body("Two players · no internet needed"))
         p.addView(button("Create game – Wi-Fi") { showHostWifi() })
         p.addView(button("Join game – Wi-Fi") { showJoinWifi() })
