@@ -16,8 +16,10 @@ jobs:
         with:
           gradle-version: "8.9"
       - name: Build debug APK
-        run: gradle assembleDebug --no-daemon
+        run: |
+          cd PaperWar
+          gradle assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: PaperWar-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: PaperWar/app/build/outputs/apk/debug/app-debug.apk
