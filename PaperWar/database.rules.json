@@ -1,0 +1,29 @@
+{
+  "rules": {
+    "rooms": {
+      "$code": {
+        ".write": "auth != null && !newData.exists() && data.child('hostUid').val() === auth.uid",
+        "hostUid": {
+          ".read": "auth != null",
+          ".write": "auth != null && !data.exists() && newData.val() === auth.uid"
+        },
+        "guestUid": {
+          ".read": "auth != null",
+          ".write": "auth != null && ((!data.exists() && newData.val() === auth.uid && root.child('rooms/' + $code + '/hostUid').exists()) || (data.val() === auth.uid && !newData.exists()))"
+        },
+        "to_host": {
+          ".read": "auth != null && root.child('rooms/' + $code + '/hostUid').val() === auth.uid",
+          ".write": "auth != null && (root.child('rooms/' + $code + '/hostUid').val() === auth.uid || root.child('rooms/' + $code + '/guestUid').val() === auth.uid)"
+        },
+        "to_guest": {
+          ".read": "auth != null && root.child('rooms/' + $code + '/guestUid').val() === auth.uid",
+          ".write": "auth != null && (root.child('rooms/' + $code + '/hostUid').val() === auth.uid || root.child('rooms/' + $code + '/guestUid').val() === auth.uid)"
+        },
+        "presence": {
+          ".read": "auth != null && (root.child('rooms/' + $code + '/hostUid').val() === auth.uid || root.child('rooms/' + $code + '/guestUid').val() === auth.uid)",
+          ".write": "auth != null && (root.child('rooms/' + $code + '/hostUid').val() === auth.uid || root.child('rooms/' + $code + '/guestUid').val() === auth.uid)"
+        }
+      }
+    }
+  }
+}
